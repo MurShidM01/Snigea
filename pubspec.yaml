@@ -47,6 +47,8 @@ dev_dependencies:
   flutter_lints: ^6.0.0
   drift_dev: ^2.35.1
   build_runner: ^2.16.2
+  flutter_launcher_icons: ^0.14.4
+  image: ^4.12.0
 
 flutter:
   uses-material-design: true
@@ -57,3 +59,28 @@ flutter:
   assets:
     - assets/sqlite3.wasm
     - assets/drift_worker.js
+    - assets/icon/snigea_logo.png
+
+# The launcher icons of every platform are generated from this single source
+# image with: dart run flutter_launcher_icons
+flutter_launcher_icons:
+  android: "ic_launcher"
+  ios: true
+  image_path: "assets/icon/Snigea.png"
+  adaptive_icon_background: "#09090B"
+  adaptive_icon_foreground: "assets/icon/Snigea.png"
+  remove_alpha_ios: true
+  background_color_ios: "#09090B"
+  image_path_ios: "assets/icon/Snigea.png"
+  macos:
+    generate: true
+    image_path: "assets/icon/Snigea.png"
+  web:
+    generate: true
+    image_path: "assets/icon/Snigea.png"
+    background_color: "#09090B"
+    theme_color: "#09090B"
+  windows:
+    generate: true
+    image_path: "assets/icon/Snigea.png"
+    icon_size: 256

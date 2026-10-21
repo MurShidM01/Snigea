@@ -9,6 +9,7 @@ import '../../data/models/provider_kind.dart';
 import '../../data/repositories/progress_repository.dart';
 import '../../state/app_providers.dart';
 import '../../widgets/common.dart';
+import '../../widgets/logo.dart';
 import '../../widgets/provider_chip.dart';
 import '../../widgets/images.dart';
 import '../../widgets/media_card.dart';
@@ -300,19 +301,7 @@ class _BrandMark extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Container(
-          width: 26,
-          height: 26,
-          decoration: BoxDecoration(
-            color: context.colors.accent,
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Icon(
-            Icons.play_arrow_rounded,
-            size: 18,
-            color: Theme.of(context).colorScheme.onPrimary,
-          ),
-        ),
+        const SnigeaLogo(size: 26),
         const SizedBox(width: AppSpacing.sm),
         const Text(
           'SNIGEA',

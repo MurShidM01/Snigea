@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/theme/app_palette.dart';
 import '../../data/repositories/download_repository.dart';
 import '../../state/app_providers.dart';
+import '../../widgets/logo.dart';
 
 /// The application shell that hosts the bottom navigation.
 class AppShell extends ConsumerWidget {
@@ -37,15 +38,8 @@ class AppShell extends ConsumerWidget {
                 child: Column(
                   children: [
                     const SizedBox(height: 16),
-                    const Text(
-                      'SNIGEA',
-                      style: TextStyle(
-                        fontSize: 12,
-                        letterSpacing: 2.4,
-                        fontWeight: FontWeight.w800,
-                        color: Color(0xFFA1A1AA),
-                      ),
-                    ),
+                    const Center(child: SnigeaLogo(size: 30)),
+                    const SizedBox(height: 10),
                     const SizedBox(height: 18),
                     Expanded(
                       child: NavigationRail(
