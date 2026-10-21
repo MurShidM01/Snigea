@@ -1,0 +1,118 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+# The pipeline only reads the repository. Signing secrets are never available
+# to a pull request from a fork.
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  FLUTTER_VERSION: "3.47.7"
+
+jobs:
+  quality:
+    name: Format, analyse and test
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Set up Flutter ${{ env.FLUTTER_VERSION }}
+        uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: Install the dependencies
+        run: flutter pub get
+
+      - name: Check the formatting
+        run: dart format --output=none --set-exit-if-changed lib test tool
+
+      - name: Analyse the project
+        run: flutter analyze --no-fatal-infos
+
+      - name: Run the tests
+        run: flutter test --reporter expanded 2>&1 | tee test-output.log
+
+      - name: Upload the test log
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: test-output
+          path: test-output.log
+          if-no-files-found: ignore
+          retention-days: 7
+
+  build-web:
+    name: Build the web application
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Set up Flutter ${{ env.FLUTTER_VERSION }}
+        uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: Install the dependencies
+        run: flutter pub get
+
+      - name: Build the production web bundle
+        run: flutter build web --release
+
+      - name: Check the bundle
+        run: |
+          test -f build/web/index.html
+          test -f build/web/main.dart.js
+          test -f build/web/assets/assets/sqlite3.wasm
+          test -f build/web/assets/assets/drift_worker.js
+
+  build-android:
+    name: Build the Android debug APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      # The repository asks for a large Gradle heap. The hosted runner has
+      # enough memory, the cap keeps the build inside the available budget.
+      GRADLE_OPTS: "-Dorg.gradle.jvmargs=-Xmx4g -XX:MaxMetaspaceSize=1g"
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Set up Flutter ${{ env.FLUTTER_VERSION }}
+        uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: Install the dependencies
+        run: flutter pub get
+
+      - name: Build the debug APK
+        run: flutter build apk --debug
+
+      - name: Upload the debug APK
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: snigea-debug-apk
+          path: build/app/outputs/flutter-apk/app-debug.apk
+          if-no-files-found: error
+          retention-days: 7

@@ -1,0 +1,465 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Existing tag to build, for example v1.0.1. Leave empty to only validate pubspec.yaml."
+        required: false
+        type: string
+      publish:
+        description: "Publish the GitHub Release. Requires the tag to match the version in pubspec.yaml."
+        required: false
+        default: false
+        type: boolean
+
+# The workflow publishes a release, so it needs write access to the contents.
+# It is never executed for pull requests, therefore no untrusted code can
+# reach the signing secrets.
+permissions:
+  contents: write
+
+# Only one release may run at a time, otherwise two tags could publish at the
+# same time and race on the same release.
+concurrency:
+  group: release-${{ github.event.inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
+env:
+  FLUTTER_VERSION: "3.47.7"
+
+jobs:
+  validate:
+    name: Validate the tag against pubspec.yaml
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    outputs:
+      app_version: ${{ steps.version.outputs.app_version }}
+      build_number: ${{ steps.version.outputs.build_number }}
+      tag: ${{ steps.version.outputs.tag }}
+      publish: ${{ steps.version.outputs.publish }}
+      title: ${{ steps.version.outputs.title }}
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+
+      - name: Check the release version
+        id: version
+        env:
+          INPUT_TAG: ${{ inputs.tag }}
+          INPUT_PUBLISH: ${{ inputs.publish }}
+        run: |
+          set -euo pipefail
+
+          # pubspec.yaml is the single source of truth for the version.
+          if ! grep -qE '^version:[[:space:]]*[0-9]+\.[0-9]+\.[0-9]+\+[0-9]+[[:space:]]*$' pubspec.yaml; then
+            echo "::error::pubspec.yaml does not declare a valid 'version: MAJOR.MINOR.PATCH+BUILD' entry."
+            exit 1
+          fi
+
+          RAW_VERSION="$(grep -E '^version:' pubspec.yaml | head -n 1 | awk '{print $2}')"
+          APP_VERSION="${RAW_VERSION%%+*}"
+          BUILD_NUMBER="${RAW_VERSION##*+}"
+
+          if ! [[ "$APP_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::The application version '$APP_VERSION' is malformed."
+            exit 1
+          fi
+          if ! [[ "$BUILD_NUMBER" =~ ^[0-9]+$ ]]; then
+            echo "::error::The build number '$BUILD_NUMBER' is malformed."
+            exit 1
+          fi
+
+          TAG="${INPUT_TAG:-${GITHUB_REF_NAME}}"
+          PUBLISH="false"
+
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ -z "$INPUT_TAG" ]; then
+            echo "No tag supplied, running in validation only mode."
+          else
+            if ! [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+              echo "::error::The tag '$TAG' is malformed, the expected form is vMAJOR.MINOR.PATCH."
+              exit 1
+            fi
+            if [ "${TAG#v}" != "$APP_VERSION" ]; then
+              echo "::error::The tag '$TAG' does not match the application version '$APP_VERSION' in pubspec.yaml."
+              echo "::error::Update the version in pubspec.yaml and push the matching tag, the workflow never rewrites pubspec.yaml."
+              exit 1
+            fi
+            if ! git rev-parse --verify --quiet "refs/tags/$TAG" >/dev/null; then
+              echo "::error::The tag '$TAG' does not exist in the repository."
+              exit 1
+            fi
+            if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "$INPUT_PUBLISH" != "true" ]; then
+              echo "The manual run does not request a publication, only the build will run."
+            else
+              PUBLISH="true"
+            fi
+          fi
+
+          echo "Application version : $APP_VERSION"
+          echo "Build number        : $BUILD_NUMBER"
+          echo "Tag                 : $TAG"
+          echo "Publish             : $PUBLISH"
+
+          {
+            echo "app_version=$APP_VERSION"
+            echo "build_number=$BUILD_NUMBER"
+            echo "tag=$TAG"
+            echo "publish=$PUBLISH"
+            echo "title=Snigea $APP_VERSION ($BUILD_NUMBER)"
+          } >> "$GITHUB_OUTPUT"
+
+  android:
+    name: Build the signed Android release
+    needs: validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: read
+    env:
+      APP_VERSION: ${{ needs.validate.outputs.app_version }}
+      BUILD_NUMBER: ${{ needs.validate.outputs.build_number }}
+      GRADLE_OPTS: "-Dorg.gradle.jvmargs=-Xmx4g -XX:MaxMetaspaceSize=1g"
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Set up Flutter ${{ env.FLUTTER_VERSION }}
+        uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: Install the dependencies
+        run: flutter pub get
+
+      - name: Configure the release signing key
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
+        run: |
+          set -euo pipefail
+          if [ -z "$KEYSTORE_BASE64" ] || [ -z "$KEY_ALIAS" ] || [ -z "$KEY_PASSWORD" ] || [ -z "$STORE_PASSWORD" ]; then
+            echo "::error::The Android signing secrets are not configured. Add ANDROID_KEYSTORE_BASE64, ANDROID_KEY_ALIAS, ANDROID_KEY_PASSWORD and ANDROID_STORE_PASSWORD to the repository secrets."
+            exit 1
+          fi
+
+          KEYSTORE_PATH="${RUNNER_TEMP}/snigea-release.jks"
+          printf '%s' "$KEYSTORE_BASE64" | base64 --decode > "$KEYSTORE_PATH"
+          chmod 600 "$KEYSTORE_PATH"
+
+          # Fail early if the keystore, the alias or the password do not match.
+          keytool -list -keystore "$KEYSTORE_PATH" -alias "$KEY_ALIAS" -storepass "$STORE_PASSWORD" > /dev/null
+
+          {
+            printf 'storePassword=%s\n' "$STORE_PASSWORD"
+            printf 'keyPassword=%s\n' "$KEY_PASSWORD"
+            printf 'keyAlias=%s\n' "$KEY_ALIAS"
+            printf 'storeFile=%s\n' "$KEYSTORE_PATH"
+          } > android/key.properties
+
+          echo "The release signing configuration is in place."
+
+      - name: Build the release APK
+        run: flutter build apk --release
+
+      - name: Build the release App Bundle
+        run: flutter build appbundle --release
+
+      - name: Verify the APK
+        run: |
+          set -euo pipefail
+          APK="build/app/outputs/flutter-apk/app-release.apk"
+          test -f "$APK"
+
+          APKSIGNER="$(ls -d "${ANDROID_HOME}"/build-tools/*/apksigner | sort -V | tail -n 1)"
+          AAPT="$(ls -d "${ANDROID_HOME}"/build-tools/*/aapt2 | sort -V | tail -n 1)"
+
+          {
+            echo "== Signature verification =="
+            "$APKSIGNER" verify --print-certs --verbose "$APK"
+            echo
+            echo "== Package information =="
+            "$AAPT" dump badging "$APK" | grep -E "^package:|^application-label:|^sdkVersion:|^targetSdkVersion:"
+          } | tee build/signature-report.txt
+
+          # The published APK must carry the version of pubspec.yaml.
+          if ! grep -q "versionName='${APP_VERSION}'" build/signature-report.txt; then
+            echo "::error::The APK does not carry the version name ${APP_VERSION}."
+            exit 1
+          fi
+          if ! grep -q "versionCode='${BUILD_NUMBER}'" build/signature-report.txt; then
+            echo "::error::The APK does not carry the version code ${BUILD_NUMBER}."
+            exit 1
+          fi
+          if ! grep -q "Verifies" build/signature-report.txt; then
+            echo "::error::The APK signature could not be verified."
+            exit 1
+          fi
+
+      - name: Remove the signing material
+        if: always()
+        run: |
+          rm -f "${RUNNER_TEMP}/snigea-release.jks" android/key.properties
+          echo "The temporary signing material has been removed."
+
+      - name: Upload the Android artifacts
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: android-release
+          if-no-files-found: error
+          retention-days: 7
+          path: |
+            build/app/outputs/flutter-apk/app-release.apk
+            build/app/outputs/bundle/release/app-release.aab
+            build/signature-report.txt
+
+  ios:
+    name: Build the unsigned iOS archive
+    needs: validate
+    runs-on: macos-14
+    timeout-minutes: 60
+    permissions:
+      contents: read
+    # The iOS build is optional. A failure must not block the Android release,
+    # but it is always reported in the release notes and the build log.
+    continue-on-error: true
+    outputs:
+      status: ${{ steps.assess.outputs.status }}
+      detail: ${{ steps.assess.outputs.detail }}
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Set up Flutter ${{ env.FLUTTER_VERSION }}
+        uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: Install the dependencies
+        run: flutter pub get
+
+      - name: Build the unsigned iOS archive
+        id: build
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          flutter build ipa --release --no-codesign 2>&1 | tee build-ios.log
+
+      - name: Assess the build output
+        id: assess
+        env:
+          APP_VERSION: ${{ needs.validate.outputs.app_version }}
+          BUILD_NUMBER: ${{ needs.validate.outputs.build_number }}
+        run: |
+          set -euo pipefail
+          mkdir -p build/ios-artifacts
+
+          IPA="$(find build/ios/ipa -maxdepth 1 -name '*.ipa' 2>/dev/null | head -n 1 || true)"
+          if [ -n "$IPA" ] && unzip -tq "$IPA" > /dev/null 2>&1; then
+            cp "$IPA" "build/ios-artifacts/Snigea-${APP_VERSION}-${BUILD_NUMBER}-unsigned.ipa"
+            echo "status=ipa" >> "$GITHUB_OUTPUT"
+            echo "detail=An unsigned IPA archive was produced by the build." >> "$GITHUB_OUTPUT"
+            echo "A verified unsigned IPA was produced."
+            exit 0
+          fi
+
+          ARCHIVE="$(find build/ios/archive -maxdepth 1 -name '*.xcarchive' 2>/dev/null | head -n 1 || true)"
+          if [ -n "$ARCHIVE" ] && [ -d "$ARCHIVE" ]; then
+            ditto -c -k --sequesterRsrc --keepParent "$ARCHIVE" "build/ios-artifacts/Snigea-${APP_VERSION}-${BUILD_NUMBER}-unsigned-xcarchive.zip"
+            echo "status=archive" >> "$GITHUB_OUTPUT"
+            echo "detail=Flutter produced an unsigned Xcode archive. An installable IPA requires Apple signing." >> "$GITHUB_OUTPUT"
+            echo "The unsigned Xcode archive was produced, no IPA was generated."
+            exit 0
+          fi
+
+          echo "status=failed" >> "$GITHUB_OUTPUT"
+          echo "detail=The iOS build did not produce an archive, the build log is attached to the release." >> "$GITHUB_OUTPUT"
+          echo "::warning::The iOS build did not produce an archive."
+          exit 0
+
+      - name: Attach the iOS build log
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: ios-build-log
+          if-no-files-found: ignore
+          retention-days: 7
+          path: build-ios.log
+
+      - name: Upload the iOS artifacts
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: ios-release
+          if-no-files-found: ignore
+          retention-days: 7
+          path: build/ios-artifacts
+
+  publish:
+    name: Publish the GitHub Release
+    needs: [validate, android, ios]
+    if: needs.validate.outputs.publish == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: write
+    env:
+      APP_VERSION: ${{ needs.validate.outputs.app_version }}
+      BUILD_NUMBER: ${{ needs.validate.outputs.build_number }}
+      TAG: ${{ needs.validate.outputs.tag }}
+      IOS_STATUS: ${{ needs.ios.outputs.status }}
+      IOS_DETAIL: ${{ needs.ios.outputs.detail }}
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Download the Android artifacts
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: android-release
+          path: artifacts/android
+
+      - name: Download the iOS artifacts
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: ios-release
+          path: artifacts/ios
+        continue-on-error: true
+
+      - name: Name the release assets
+        run: |
+          set -euo pipefail
+          cd artifacts/android
+          [ -f app-release.apk ] || { echo "::error::The release APK is missing."; exit 1; }
+          [ -f app-release.aab ] || { echo "::error::The release App Bundle is missing."; exit 1; }
+          mv app-release.apk "Snigea-${APP_VERSION}-${BUILD_NUMBER}-android-arm64-v8a.apk"
+          mv app-release.aab "Snigea-${APP_VERSION}-${BUILD_NUMBER}-android.aab"
+          if [ -f signature-report.txt ]; then
+            mv signature-report.txt "Snigea-${APP_VERSION}-android-signature-report.txt"
+          fi
+          cd ../ios 2>/dev/null || exit 0
+          for file in *; do
+            [ -e "$file" ] || continue
+            mv "$file" "../${file}"
+          done
+
+      - name: Create the checksums
+        run: |
+          set -euo pipefail
+          cd artifacts
+          sha256sum $(find . -maxdepth 1 -type f \( -name '*.apk' -o -name '*.aab' -o -name '*.ipa' -o -name '*.zip' \) -printf '%f\n' | sort) > SHA256SUMS.txt
+          cat SHA256SUMS.txt
+
+      - name: Write the release notes
+        run: |
+          set -euo pipefail
+          cat > release-notes.md <<EOF
+          ## Snigea ${APP_VERSION} (build ${BUILD_NUMBER})
+
+          Snigea is a cross platform streaming client for MovieBox, 4KHDHub, Dramachi, BDIX and Stremio addons.
+
+          | | |
+          | --- | --- |
+          | Application version | \`${APP_VERSION}\` |
+          | Build number | \`${BUILD_NUMBER}\` |
+          | Android application id | \`com.aliedu.app.snigea\` |
+          | Release tag | \`${TAG}\` |
+
+          ### Downloads
+
+          | Asset | Description |
+          | --- | --- |
+          | \`Snigea-${APP_VERSION}-${BUILD_NUMBER}-android-arm64-v8a.apk\` | Installable Android APK, install it on the device after allowing unknown sources. |
+          | \`Snigea-${APP_VERSION}-${BUILD_NUMBER}-android.aab\` | Android App Bundle for the Play Console or for bundle aware sideloading tools. |
+          | \`SHA256SUMS.txt\` | SHA-256 checksums of every published asset. |
+
+          ### Android signing and updates
+
+          The APK is signed with a fixed community key that is stored as a repository secret. Android only
+          accepts an update when the new APK carries the same application id **and** is signed with the
+          same key as the installed application. An installation that was signed with a different key
+          cannot be updated in place, it has to be uninstalled first and the user data is lost with it.
+
+          The key is intentionally a community key. The build is meant for sideloading and community
+          distribution, it is not a Play Store release and it is not meant for commercial distribution.
+
+          ### iOS
+
+          No Apple Developer membership and no Apple signing certificate is used for this build, so no
+          signed IPA can be published.
+          EOF
+          if [ "$IOS_STATUS" = "ipa" ]; then
+            cat >> release-notes.md <<EOF
+
+          An unsigned IPA archive is attached to this release as an optional asset. It is not signed and
+          it cannot be installed on a device as it is, see the iOS build instructions for the signing steps.
+          EOF
+          elif [ "$IOS_STATUS" = "archive" ]; then
+            cat >> release-notes.md <<EOF
+
+          The iOS build produced an unsigned Xcode archive, it is attached to this release as
+          \`Snigea-${APP_VERSION}-${BUILD_NUMBER}-unsigned-xcarchive.zip\`. It is **not** an IPA and it cannot
+          be installed on a device as it is. ${IOS_DETAIL}
+          EOF
+          else
+            cat >> release-notes.md <<EOF
+
+          The iOS build did not complete on the release runner. The build log is attached to this release
+          and the source stays available for a local build with your own Apple Account.
+          EOF
+          fi
+          cat >> release-notes.md <<EOF
+
+          ### Build the iOS app on your own Mac
+
+          1. Install the Flutter SDK \`3.47.7\`, open a terminal in the repository and run \`flutter pub get\`.
+          2. Run \`open ios/Runner.xcworkspace\`, Xcode opens the project.
+          3. Select the \`Runner\` target, then the \`Signing & Capabilities\` tab.
+          4. Tick \`Automatically manage signing\` and choose your own Apple Account as the team.
+          5. Connect your iPhone or iPad, select it as the run destination and press \`Run\`.
+
+          The free Personal Team profile is limited: the certificates expire after seven days, the app
+          must be rebuilt and reinstalled on the device afterwards, and the provisioning limit is three
+          apps per device and per seven days.
+
+          ### Upstream content providers
+
+          The providers are community maintained public endpoints. Availability and the returned catalogues
+          change over time, and some of them answer with an empty result for anonymous sessions.
+          EOF
+          echo "The release notes are ready."
+
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          if gh release view "$TAG" > /dev/null 2>&1; then
+            echo "::error::The release $TAG already exists, delete it before publishing a new one."
+            exit 1
+          fi
+
+          ASSETS=()
+          while IFS= read -r asset; do
+            ASSETS+=("$asset")
+          done < <(cd artifacts && find . -maxdepth 1 -type f \( -name '*.apk' -o -name '*.aab' -o -name '*.ipa' -o -name '*.zip' -o -name '*.txt' \) -printf '%f\n' | sort)
+
+          gh release create "$TAG" \
+            --title "Snigea ${APP_VERSION} (${BUILD_NUMBER})" \
+            --notes-file release-notes.md \
+            "${ASSETS[@]/#/artifacts/}"
+
+          echo "The release $TAG has been published."
+          gh release view "$TAG" --json url,tagName,name --jq '"Release: \(.tagName) \(.name) -> \(.url)"'

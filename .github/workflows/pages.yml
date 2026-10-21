@@ -1,0 +1,123 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      base_href:
+        description: "Override the base path of the web build, for example / for a custom domain."
+        required: false
+        type: string
+
+# The build job only needs to read the repository. The deployment job needs the
+# Pages token and the OIDC token of the official Pages actions.
+permissions:
+  contents: read
+
+concurrency:
+  group: pages-${{ github.event.inputs.base_href || github.ref }}
+  cancel-in-progress: false
+
+env:
+  FLUTTER_VERSION: "3.47.7"
+
+jobs:
+  build:
+    name: Build the production web bundle
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    outputs:
+      base_href: ${{ steps.base.outputs.base_href }}
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Set up Flutter ${{ env.FLUTTER_VERSION }}
+        uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: Install the dependencies
+        run: flutter pub get
+
+      - name: Resolve the base path
+        id: base
+        env:
+          REPOSITORY: ${{ github.event.repository.name }}
+          OWNER: ${{ github.repository_owner }}
+          INPUT_BASE_HREF: ${{ inputs.base_href }}
+        run: |
+          set -euo pipefail
+          if [ -n "$INPUT_BASE_HREF" ]; then
+            BASE_HREF="$INPUT_BASE_HREF"
+          elif [ "$REPOSITORY" = "${OWNER}.github.io" ]; then
+            # A user or organisation site is served from the root of the domain.
+            BASE_HREF="/"
+          else
+            # A project site is served from a sub directory.
+            BASE_HREF="/${REPOSITORY}/"
+          fi
+          echo "base_href=$BASE_HREF" >> "$GITHUB_OUTPUT"
+          echo "The web bundle will be served from $BASE_HREF"
+
+      - name: Build the production web bundle
+        run: flutter build web --release --base-href "${{ steps.base.outputs.base_href }}"
+
+      - name: Check the bundle
+        run: |
+          set -euo pipefail
+          test -f build/web/index.html
+          test -f build/web/main.dart.js
+          test -f build/web/assets/assets/sqlite3.wasm
+          test -f build/web/assets/assets/drift_worker.js
+
+          # The base path of the deployed bundle must match the served location.
+          if ! grep -q "<base href=\"${{ steps.base.outputs.base_href }}\"" build/web/index.html; then
+            echo "::error::The generated index.html does not use the base path ${{ steps.base.outputs.base_href }}."
+            grep -o '<base href="[^"]*"' build/web/index.html || true
+            exit 1
+          fi
+
+          # No absolute asset path may escape the deployment directory.
+          if grep -RIn 'src="/\|href="/flutter' build/web/index.html; then
+            echo "::error::The generated index.html references absolute asset paths."
+            exit 1
+          fi
+          echo "The bundle is consistent."
+
+      # GitHub Pages runs Jekyll by default, which ignores files and folders
+      # that start with an underscore.
+      - name: Disable Jekyll
+        run: touch build/web/.nojekyll
+
+      - name: Configure GitHub Pages
+        id: pages
+        uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b # v5
+
+      - name: Upload the Pages artifact
+        uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa # v3
+        with:
+          path: build/web
+
+  deploy:
+    name: Deploy to GitHub Pages
+    needs: build
+    # A pull request is only validated, it never deploys untrusted code.
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    permissions:
+      pages: write
+      id-token: write
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e # v4
