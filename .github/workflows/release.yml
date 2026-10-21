@@ -381,7 +381,7 @@ jobs:
 
           | Asset | Description |
           | --- | --- |
-          | \`Snigea-${APP_VERSION}-${BUILD_NUMBER}-android-arm64-v8a.apk\` | Installable Android APK, install it on the device after allowing unknown sources. |
+          | \`Snigea-${APP_VERSION}-${BUILD_NUMBER}-android-universal.apk\` | Installable Android APK with the native libraries of every architecture, install it on the device after allowing unknown sources. |
           | \`Snigea-${APP_VERSION}-${BUILD_NUMBER}-android.aab\` | Android App Bundle for the Play Console or for bundle aware sideloading tools. |
           | \`SHA256SUMS.txt\` | SHA-256 checksums of every published asset. |
 
