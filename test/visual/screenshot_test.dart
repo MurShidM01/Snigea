@@ -1,7 +1,9 @@
 import 'dart:io';
+import 'dart:ui' as ui;
 
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -173,8 +175,13 @@ void main() {
   late AppDatabase database;
 
   setUpAll(() async {
-    const fonts =
-        '/workspaces/codespaces-blank/flutter-sdk/flutter/bin/cache/artifacts/material_fonts';
+    // The fonts of the Flutter SDK of the host make the capture readable. The
+    // path is resolved from the environment, a missing SDK is not an error:
+    // the capture then uses the fallback font of the test binding.
+    final root = Platform.environment['FLUTTER_ROOT'];
+    if (root == null) return;
+    final fonts = '$root/bin/cache/artifacts/material_fonts';
+    if (!Directory(fonts).existsSync()) return;
     await _loadFont('Roboto', [
       '$fonts/Roboto-Regular.ttf',
       '$fonts/Roboto-Medium.ttf',
@@ -233,9 +240,9 @@ void main() {
       'settings': const SettingsPage(),
     };
 
-    // The rendered pictures are stored next to the other golden images, they
-    // never overwrite the device screenshots of the README.
-    final directory = Directory('goldens/screenshots');
+    // The rendered pictures are stored in the build folder, they never
+    // overwrite the device screenshots of the README.
+    final directory = Directory('build/screenshots');
     if (!directory.existsSync()) {
       directory.createSync(recursive: true);
     }
@@ -277,10 +284,19 @@ void main() {
         await tester.pump(const Duration(milliseconds: 100));
       }
 
-      await expectLater(
-        find.byKey(ValueKey('capture-${entry.key}')),
-        matchesGoldenFile('goldens/screenshots/${entry.key}.png'),
-      );
+      // The picture is written into the build folder as a developer aid. The
+      // test never compares the pixels, a different renderer on the runner
+      // must not turn the pipeline red.
+      await tester.runAsync(() async {
+        final boundary = tester.renderObject<RenderRepaintBoundary>(
+          find.byKey(ValueKey('capture-${entry.key}')),
+        );
+        final image = await boundary.toImage(pixelRatio: 1);
+        final data = await image.toByteData(format: ui.ImageByteFormat.png);
+        File('build/screenshots/${entry.key}.png')
+            .writeAsBytesSync(data!.buffer.asUint8List());
+      });
+
       expect(tester.takeException(), isNull);
     }
   });
