@@ -344,7 +344,7 @@ jobs:
           cd artifacts/android
           [ -f app-release.apk ] || { echo "::error::The release APK is missing."; exit 1; }
           [ -f app-release.aab ] || { echo "::error::The release App Bundle is missing."; exit 1; }
-          mv app-release.apk "Snigea-${APP_VERSION}-${BUILD_NUMBER}-android-arm64-v8a.apk"
+          mv app-release.apk "Snigea-${APP_VERSION}-${BUILD_NUMBER}-android-universal.apk"
           mv app-release.aab "Snigea-${APP_VERSION}-${BUILD_NUMBER}-android.aab"
           if [ -f signature-report.txt ]; then
             mv signature-report.txt "Snigea-${APP_VERSION}-android-signature-report.txt"
