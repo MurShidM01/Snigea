@@ -475,10 +475,10 @@ committed.
 | Check | Result |
 | :--- | :--- |
 | `flutter analyze` | no issues |
-| `flutter test` | 135 tests, all passing |
+| `flutter test` | 136 tests, all passing |
 | `flutter build web --release --base-href /snigea/` | succeeds, the base path is applied to `index.html` |
-| `flutter build apk --release` (arm64) | succeeds, 64.6 MB APK with `libmpv.so` and `libsqlite3.so` |
-| `apksigner verify` on the release APK | verifies, APK Signature Scheme v2 |
+| `flutter build apk --release` | succeeds, 109.5 MB universal APK with `libmpv.so` and `libsqlite3.so`, the launcher icon and the logo of the application |
+| `apksigner verify` on the release APK | verifies, APK Signature Scheme v2, the version name `1.0.1` and the version code `12` are checked with `aapt2` |
 | `dart run tool/live_provider_check.dart` | verifies the live MovieBox API (session, search, details, releases) |
 
 The live provider check only prints metadata and host names; it never prints a session token or
