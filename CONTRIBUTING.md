@@ -397,8 +397,9 @@ sent back before the review starts.
   application on a device. A rendering of the test suite is not a screenshot
   for the README.
 - **[STRICT]** The name is the name of the screen in lower case with a dash:
-  `player-inline.jpg`, `player-fullscreen.jpg`, `home.jpg`, `details.jpg`,
-  `search.jpg`, `library.jpg`, `downloads.jpg`, `settings.jpg`.
+  `home.jpg`, `details.jpg`, `search.jpg`, `library.jpg`, `downloads.jpg`,
+  `settings.jpg`, `player-inline.jpg`, `player-controls.jpg`,
+  `player-fullscreen.jpg`.
 - **[STRICT]** A change of the interface that is visible on a screen comes with
   the new picture of that screen.
 - **[STRICT]** A picture shows no personal data: no account, no notification, no
