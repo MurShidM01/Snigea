@@ -48,6 +48,7 @@ history, downloads and playback progress in a local SQLite database.</p>
 - [Cross platform support](#cross-platform-support)
 - [Continuous integration and delivery](#continuous-integration-and-delivery)
 - [Publishing a release](#publishing-a-release)
+- [Contributing](#contributing)
 - [Development](#development)
 - [Verification](#verification)
 - [FAQ](#faq)
@@ -429,6 +430,39 @@ dart run tool/generate_logo_asset.dart   # the small variant that the app bar dr
 
 The application itself draws `assets/icon/snigea_logo.png` next to the wordmark in the app bar
 and in the navigation rail.
+
+---
+
+## Contributing
+
+Pull requests are welcome, but they follow strict rules. The full guide is in
+**[CONTRIBUTING.md](CONTRIBUTING.md)**:
+
+- every change arrives as a pull request against `main`, never as a direct push,
+- the branch is named `<type>/<short-description>`, for example `feat/player-speed`,
+- the title is `<type>(<scope>): <description>`, for example
+  `feat(player): add the speed control`,
+- the [pull request template](.github/pull_request_template.md) is filled in
+  completely, the pipeline rejects a pull request with a missing section or an
+  empty checklist,
+- `flutter analyze` reports no issue, `dart format` changes nothing and
+  `flutter test` passes,
+- every new behaviour has a test and every fixed defect has a regression test,
+- no secret, no keystore, no native code and no build output is ever committed,
+- the version in `pubspec.yaml` and the release tags belong to the maintainer.
+
+The rules are not only documented, they are enforced:
+
+```bash
+PR_TITLE="feat(player): add the speed control" \
+PR_BRANCH="feat/player-speed" \
+PR_BODY="$(cat .github/pull_request_template.md)" \
+bash tool/check_pull_request.sh
+```
+
+Defects and ideas are reported with the templates of
+[`.github/ISSUE_TEMPLATE`](.github/ISSUE_TEMPLATE). A security problem is
+reported privately to the maintainer, never in a public issue.
 
 ---
 

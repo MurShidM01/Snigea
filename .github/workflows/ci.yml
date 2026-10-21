@@ -20,6 +20,24 @@ env:
   FLUTTER_VERSION: "3.47.7"
 
 jobs:
+  pull-request-rules:
+    name: Check the rules of the pull request
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    # The rules only exist for a pull request, a push to a branch is checked
+    # by the quality job below.
+    if: github.event_name == 'pull_request'
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Validate the branch, the title and the body
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_BRANCH: ${{ github.event.pull_request.head.ref }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: bash tool/check_pull_request.sh
+
   quality:
     name: Format, analyse and test
     runs-on: ubuntu-latest
