@@ -475,9 +475,9 @@ be handled, and it puts the users of the application at risk.
 ## 20. The licence
 
 Snigea is **dual licensed** under the Apache License 2.0 and the MIT licence,
-at your option. The full texts are in [LICENSE-APACHE](../LICENSE-APACHE) and
-in [LICENSE-MIT](../LICENSE-MIT), the notice of the project is in
-[LICENSE](../LICENSE).
+at your option. The full texts are in [LICENSE](../LICENSE) and in
+[LICENSE-MIT](../LICENSE-MIT), the notice with the attributions is in
+[NOTICE](../NOTICE).
 
 - **[STRICT]** Every contribution is published under the same dual licence.
   A contribution that arrives with another licence is not merged.

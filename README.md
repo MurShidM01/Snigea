@@ -583,9 +583,9 @@ Snigea is **dual licensed**: you may use it under the terms of the
 
 | | |
 | :--- | :--- |
-| Apache License 2.0 | the full text in [LICENSE-APACHE](LICENSE-APACHE) |
+| Apache License 2.0 | the full text in [LICENSE](LICENSE) |
 | MIT licence | the full text in [LICENSE-MIT](LICENSE-MIT) |
-| the notice of the project | [LICENSE](LICENSE) |
+| the notice and the attributions | [NOTICE](NOTICE) |
 
 The third party components keep their own licences, they are listed in
 [CREDITS.md](CREDITS.md).

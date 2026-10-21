@@ -1,0 +1,24 @@
+Snigea
+Copyright 2026 Snigea contributors
+
+This product is dual licensed under the Apache License, Version 2.0 and the MIT
+licence. You may use it under the terms of either of them, at your option.
+
+  Apache License, Version 2.0 — the full text is in LICENSE
+  MIT licence                   — the full text is in LICENSE-MIT
+
+Unless you explicitly state otherwise, any contribution intentionally submitted
+for inclusion in this project by you, as defined in the Apache License 2.0,
+shall be dual licensed as above, without any additional terms or conditions.
+
+Third party components
+----------------------
+
+This product depends on third party software. The list of the components with
+their licence is in CREDITS.md. The copyright notices and the licence
+conditions of those components have to be kept when this product is
+distributed.
+
+The providers of the catalogue are reached at runtime, they are not part of
+the distribution. Their names and their logos belong to their respective
+owners, this project is not affiliated with them.
