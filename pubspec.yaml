@@ -1,0 +1,59 @@
+name: snigea
+description: "Snigea — a premium cross-platform movie and TV streaming client."
+publish_to: 'none'
+
+version: 1.0.1+12
+
+environment:
+  sdk: ^3.13.5
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  cupertino_icons: ^1.0.8
+
+  # State management
+  flutter_riverpod: ^3.4.3
+
+  # Navigation
+  go_router: ^18.1.0
+
+  # Networking
+  dio: ^5.11.1
+
+  # Persistence
+  drift: ^2.35.2
+  drift_flutter: ^0.3.1
+  path: ^1.9.1
+  path_provider: ^2.1.6
+
+  # Playback
+  media_kit: ^1.2.6
+  media_kit_video: ^2.0.1
+  media_kit_libs_video: ^1.0.7
+
+  # Parsing / utils
+  html: ^0.15.7
+  crypto: ^3.0.7
+  intl: ^0.20.3
+  collection: ^1.19.1
+  cached_network_image: ^4.0.4
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+  flutter_lints: ^6.0.0
+  drift_dev: ^2.35.1
+  build_runner: ^2.16.2
+
+flutter:
+  uses-material-design: true
+
+  # The SQLite WebAssembly module and the drift worker are required by the
+  # web target of the local database. They are shipped as regular Flutter
+  # assets so that no platform folder has to be modified.
+  assets:
+    - assets/sqlite3.wasm
+    - assets/drift_worker.js
