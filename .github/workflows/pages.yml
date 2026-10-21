@@ -75,6 +75,7 @@ jobs:
           test -f build/web/main.dart.js
           test -f build/web/assets/assets/sqlite3.wasm
           test -f build/web/assets/assets/drift_worker.js
+          test -f build/web/assets/assets/icon/snigea_logo.png
 
           # The base path of the deployed bundle must match the served location.
           if ! grep -q "<base href=\"${{ steps.base.outputs.base_href }}\"" build/web/index.html; then

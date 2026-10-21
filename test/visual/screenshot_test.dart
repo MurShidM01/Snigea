@@ -119,10 +119,30 @@ const Map<String, (String, int, String, String)> _catalogue = {
   '1300291': ('Inception', 1, '2010-07-16', 'https://example.invalid/1.jpg'),
   '1295644': ('Interstellar', 1, '2014-11-05', 'https://example.invalid/2.jpg'),
   '1217411': ('Breaking Bad', 2, '2008-01-20', 'https://example.invalid/3.jpg'),
-  '1422942': ('Dune: Part Two', 1, '2024-02-27', 'https://example.invalid/4.jpg'),
-  '1157020': ('Game of Thrones', 2, '2011-04-17', 'https://example.invalid/5.jpg'),
-  '1198155': ('The Dark Knight', 1, '2008-07-16', 'https://example.invalid/6.jpg'),
-  '1124802': ('The Last of Us', 2, '2023-01-15', 'https://example.invalid/7.jpg'),
+  '1422942': (
+    'Dune: Part Two',
+    1,
+    '2024-02-27',
+    'https://example.invalid/4.jpg',
+  ),
+  '1157020': (
+    'Game of Thrones',
+    2,
+    '2011-04-17',
+    'https://example.invalid/5.jpg',
+  ),
+  '1198155': (
+    'The Dark Knight',
+    1,
+    '2008-07-16',
+    'https://example.invalid/6.jpg',
+  ),
+  '1124802': (
+    'The Last of Us',
+    2,
+    '2023-01-15',
+    'https://example.invalid/7.jpg',
+  ),
   '1268300': ('Oppenheimer', 1, '2023-07-19', 'https://example.invalid/8.jpg'),
 };
 
@@ -179,7 +199,9 @@ void main() {
     final overrides = [
       appDatabaseProvider.overrideWithValue(database),
       settingsProvider.overrideWith(
-        () => _SettingsController(const AppSettings(themeMode: SnigeaThemeMode.dark)),
+        () => _SettingsController(
+          const AppSettings(themeMode: SnigeaThemeMode.dark),
+        ),
       ),
       providerRegistryProvider.overrideWithValue({
         ProviderKind.moviebox: _FakeProvider(),
@@ -225,7 +247,9 @@ void main() {
             debugShowCheckedModeBanner: false,
             theme: theme.copyWith(
               textTheme: theme.textTheme.apply(fontFamily: 'Roboto'),
-              primaryTextTheme: theme.primaryTextTheme.apply(fontFamily: 'Roboto'),
+              primaryTextTheme: theme.primaryTextTheme.apply(
+                fontFamily: 'Roboto',
+              ),
             ),
             home: Scaffold(
               body: RepaintBoundary(

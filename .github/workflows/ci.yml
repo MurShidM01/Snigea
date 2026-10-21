@@ -83,6 +83,7 @@ jobs:
           test -f build/web/main.dart.js
           test -f build/web/assets/assets/sqlite3.wasm
           test -f build/web/assets/assets/drift_worker.js
+          test -f build/web/assets/assets/icon/snigea_logo.png
 
   build-android:
     name: Build the Android release APK
