@@ -24,19 +24,28 @@ jobs:
     name: Check the rules of the pull request
     runs-on: ubuntu-latest
     timeout-minutes: 5
-    # The rules only exist for a pull request, a push to a branch is checked
-    # by the quality job below.
-    if: github.event_name == 'pull_request'
+    # The rules are checked for a pull request and for a push into a branch.
+    # The push into main is the merge of a pull request, its rules were already
+    # checked by the pull request itself.
+    if: github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref != 'refs/heads/main')
     steps:
       - name: Check out the repository
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
 
-      - name: Validate the branch, the title and the body
+      - name: Validate the branch and the commits
         env:
           PR_TITLE: ${{ github.event.pull_request.title }}
-          PR_BRANCH: ${{ github.event.pull_request.head.ref }}
+          PR_BRANCH: ${{ github.head_ref || github.ref_name }}
           PR_BODY: ${{ github.event.pull_request.body }}
-        run: bash tool/check_pull_request.sh
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event_name }}" = "push" ]; then
+            # The commits that the push added to the branch.
+            export PR_COMMITS="$(git log --format=%s "${{ github.event.before }}"..HEAD 2>/dev/null || git log --format=%s -1)"
+          fi
+          bash tool/check_pull_request.sh
 
   quality:
     name: Format, analyse and test

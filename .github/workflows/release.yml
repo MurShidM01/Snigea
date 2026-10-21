@@ -224,6 +224,157 @@ jobs:
             build/app/outputs/bundle/release/app-release.aab
             build/signature-report.txt
 
+  linux:
+    name: Build the Linux bundle and the Debian package
+    needs: validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    # The desktop build is optional, a failure must not block the Android
+    # release but it is reported in the release notes.
+    continue-on-error: true
+    env:
+      APP_VERSION: ${{ needs.validate.outputs.app_version }}
+      BUILD_NUMBER: ${{ needs.validate.outputs.build_number }}
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Set up Flutter ${{ env.FLUTTER_VERSION }}
+        uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: Install the dependencies
+        run: flutter pub get
+
+      - name: Install the tool chain of the desktop target
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            clang cmake ninja-build pkg-config libgtk-3-dev libmpv-dev \
+            libgl1-mesa-dev libglu1-mesa-dev xz-utils desktop-file-utils \
+            libglib2.0-dev
+
+      - name: Build the Linux bundle
+        run: flutter build linux --release
+
+      - name: Assemble the archive and the package
+        run: |
+          set -euo pipefail
+          BUNDLE="build/linux/x64/release/bundle"
+          test -x "$BUNDLE/snigea"
+
+          tar -czf "Snigea-${APP_VERSION}-${BUILD_NUMBER}-linux-x64.tar.gz" -C "$BUNDLE" .
+          bash tool/build_deb.sh "$BUNDLE" "${APP_VERSION}-${BUILD_NUMBER}" \
+            "Snigea-${APP_VERSION}-${BUILD_NUMBER}-linux-amd64.deb"
+
+      - name: Upload the Linux artifacts
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: linux-release
+          if-no-files-found: error
+          retention-days: 7
+          path: |
+            Snigea-*.tar.gz
+            Snigea-*.deb
+
+  windows:
+    name: Build the Windows release
+    needs: validate
+    runs-on: windows-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    # The desktop build is optional, a failure must not block the Android
+    # release but it is reported in the release notes.
+    continue-on-error: true
+    env:
+      APP_VERSION: ${{ needs.validate.outputs.app_version }}
+      BUILD_NUMBER: ${{ needs.validate.outputs.build_number }}
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Set up Flutter ${{ env.FLUTTER_VERSION }}
+        uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: Install the dependencies
+        run: flutter pub get
+
+      - name: Build the Windows release
+        run: flutter build windows --release
+
+      - name: Compress the bundle
+        shell: pwsh
+        run: |
+          $bundle = "build\windows\x64\runner\Release"
+          if (-not (Test-Path $bundle)) { $bundle = "build\windows\x64\runner\Release" }
+          if (-not (Test-Path "$bundle\snigea.exe")) { throw "The Windows bundle was not produced." }
+          Compress-Archive -Path "$bundle\*" -DestinationPath "Snigea-$env:APP_VERSION-$env:BUILD_NUMBER-windows-x64.zip"
+
+      - name: Upload the Windows artifacts
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: windows-release
+          if-no-files-found: error
+          retention-days: 7
+          path: Snigea-*.zip
+
+  macos:
+    name: Build the macOS release
+    needs: validate
+    runs-on: macos-14
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    # The desktop build is optional, a failure must not block the Android
+    # release but it is reported in the release notes.
+    continue-on-error: true
+    env:
+      APP_VERSION: ${{ needs.validate.outputs.app_version }}
+      BUILD_NUMBER: ${{ needs.validate.outputs.build_number }}
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Set up Flutter ${{ env.FLUTTER_VERSION }}
+        uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: Install the dependencies
+        run: flutter pub get
+
+      - name: Build the macOS release
+        run: flutter build macos --release
+
+      - name: Compress the application
+        run: |
+          set -euo pipefail
+          APP="build/macos/Build/Products/Release/snigea.app"
+          test -d "$APP"
+          ditto -c -k --sequesterRsrc --keepParent "$APP" \
+            "Snigea-${APP_VERSION}-${BUILD_NUMBER}-macos-universal.zip"
+
+      - name: Upload the macOS artifacts
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: macos-release
+          if-no-files-found: error
+          retention-days: 7
+          path: Snigea-*.zip
+
   ios:
     name: Build the unsigned iOS archive
     needs: validate
@@ -277,12 +428,27 @@ jobs:
           fi
 
           ARCHIVE="$(find build/ios/archive -maxdepth 1 -name '*.xcarchive' 2>/dev/null | head -n 1 || true)"
+          APP_BUNDLE=""
           if [ -n "$ARCHIVE" ] && [ -d "$ARCHIVE" ]; then
             ditto -c -k --sequesterRsrc --keepParent "$ARCHIVE" "build/ios-artifacts/Snigea-${APP_VERSION}-${BUILD_NUMBER}-unsigned-xcarchive.zip"
-            echo "status=archive" >> "$GITHUB_OUTPUT"
-            echo "detail=Flutter produced an unsigned Xcode archive. An installable IPA requires Apple signing." >> "$GITHUB_OUTPUT"
-            echo "The unsigned Xcode archive was produced, no IPA was generated."
-            exit 0
+            APP_BUNDLE="$ARCHIVE/Products/Applications/Runner.app"
+          fi
+
+          # Flutter skips the IPA without a signing identity, the application
+          # of the archive is packed into an unsigned IPA by hand.
+          if [ -n "$APP_BUNDLE" ] && [ -d "$APP_BUNDLE" ]; then
+            STAGE="$(mktemp -d)"
+            mkdir -p "$STAGE/Payload"
+            cp -R "$APP_BUNDLE" "$STAGE/Payload/Runner.app"
+            (cd "$STAGE" && zip -qry "ipa.zip" Payload)
+            mv "$STAGE/ipa.zip" "build/ios-artifacts/Snigea-${APP_VERSION}-${BUILD_NUMBER}-unsigned.ipa"
+            rm -rf "$STAGE"
+            if unzip -tq "build/ios-artifacts/Snigea-${APP_VERSION}-${BUILD_NUMBER}-unsigned.ipa" > /dev/null 2>&1; then
+              echo "status=ipa" >> "$GITHUB_OUTPUT"
+              echo "detail=An unsigned IPA was assembled from the archive of the build." >> "$GITHUB_OUTPUT"
+              echo "An unsigned IPA was assembled from the archive."
+              exit 0
+            fi
           fi
 
           echo "status=failed" >> "$GITHUB_OUTPUT"
@@ -309,8 +475,8 @@ jobs:
 
   publish:
     name: Publish the GitHub Release
-    needs: [validate, android, ios]
-    if: needs.validate.outputs.publish == 'true'
+    needs: [validate, android, linux, windows, macos, ios]
+    if: always() && needs.validate.outputs.publish == 'true' && needs.android.result == 'success'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     permissions:
@@ -321,6 +487,9 @@ jobs:
       TAG: ${{ needs.validate.outputs.tag }}
       IOS_STATUS: ${{ needs.ios.outputs.status }}
       IOS_DETAIL: ${{ needs.ios.outputs.detail }}
+      LINUX_RESULT: ${{ needs.linux.result }}
+      WINDOWS_RESULT: ${{ needs.windows.result }}
+      MACOS_RESULT: ${{ needs.macos.result }}
     steps:
       - name: Check out the repository
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
@@ -331,12 +500,33 @@ jobs:
           name: android-release
           path: artifacts/android
 
+      - name: Download the Linux artifacts
+        continue-on-error: true
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: linux-release
+          path: artifacts/linux
+
+      - name: Download the Windows artifacts
+        continue-on-error: true
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: windows-release
+          path: artifacts/windows
+
+      - name: Download the macOS artifacts
+        continue-on-error: true
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: macos-release
+          path: artifacts/macos
+
       - name: Download the iOS artifacts
+        continue-on-error: true
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           name: ios-release
           path: artifacts/ios
-        continue-on-error: true
 
       - name: Name the release assets
         run: |
@@ -349,17 +539,27 @@ jobs:
           if [ -f signature-report.txt ]; then
             mv signature-report.txt "Snigea-${APP_VERSION}-android-signature-report.txt"
           fi
-          cd ../ios 2>/dev/null || exit 0
-          for file in *; do
-            [ -e "$file" ] || continue
-            mv "$file" "../${file}"
+
+          for platform in linux windows macos ios; do
+            if [ -d "../$platform" ]; then
+              for file in ../$platform/*; do
+                [ -e "$file" ] || continue
+                mv "$file" "../$(basename "$file")"
+              done
+            fi
           done
 
       - name: Create the checksums
         run: |
           set -euo pipefail
           cd artifacts
-          sha256sum $(find . -maxdepth 1 -type f \( -name '*.apk' -o -name '*.aab' -o -name '*.ipa' -o -name '*.zip' \) -printf '%f\n' | sort) > SHA256SUMS.txt
+          FILES="$(find . -maxdepth 1 -type f \( -name '*.apk' -o -name '*.aab' -o -name '*.ipa' -o -name '*.zip' -o -name '*.tar.gz' -o -name '*.deb' \) -printf '%f\n' | sort)"
+          if [ -z "$FILES" ]; then
+            echo "::error::There is no asset to publish."
+            exit 1
+          fi
+          # shellcheck disable=SC2086
+          sha256sum $FILES > SHA256SUMS.txt
           cat SHA256SUMS.txt
 
       - name: Write the release notes
@@ -379,11 +579,15 @@ jobs:
 
           ### Downloads
 
-          | Asset | Description |
-          | --- | --- |
-          | \`Snigea-${APP_VERSION}-${BUILD_NUMBER}-android-universal.apk\` | Installable Android APK with the native libraries of every architecture, install it on the device after allowing unknown sources. |
-          | \`Snigea-${APP_VERSION}-${BUILD_NUMBER}-android.aab\` | Android App Bundle for the Play Console or for bundle aware sideloading tools. |
-          | \`SHA256SUMS.txt\` | SHA-256 checksums of every published asset. |
+          | Asset | Platform | Description |
+          | --- | --- | --- |
+          | \`Snigea-${APP_VERSION}-${BUILD_NUMBER}-android-universal.apk\` | Android | The installable APK with the native libraries of every architecture. |
+          | \`Snigea-${APP_VERSION}-${BUILD_NUMBER}-android.aab\` | Android | The App Bundle for the Play Console or for the bundle aware sideloading tools. |
+          | \`Snigea-${APP_VERSION}-${BUILD_NUMBER}-linux-x64.tar.gz\` | Linux | The bundle of the desktop application, run the \`snigea\` file in it. |
+          | \`Snigea-${APP_VERSION}-${BUILD_NUMBER}-linux-amd64.deb\` | Linux | The Debian package, install it with \`sudo apt install ./Snigea-${APP_VERSION}-${BUILD_NUMBER}-linux-amd64.deb\`. |
+          | \`Snigea-${APP_VERSION}-${BUILD_NUMBER}-windows-x64.zip\` | Windows | The bundle of the desktop application, run \`snigea.exe\`. |
+          | \`Snigea-${APP_VERSION}-${BUILD_NUMBER}-macos-universal.zip\` | macOS | The application bundle, it is not signed, open it with a right click and confirm the opening. |
+          | \`SHA256SUMS.txt\` | – | The SHA-256 checksum of every published asset. |
 
           ### Android signing and updates
 
@@ -395,19 +599,36 @@ jobs:
           The key is intentionally a community key. The build is meant for sideloading and community
           distribution, it is not a Play Store release and it is not meant for commercial distribution.
 
-          ### iOS
+          ### Linux
 
-          No Apple Developer membership and no Apple signing certificate is used for this build, so no
-          signed IPA can be published.
+          The Debian package needs the mpv client library, install \`libmpv2\` when the package manager
+          asks for it. The archive of the bundle contains the same application and runs on every
+          distribution that provides libmpv.
+
+          ### Windows
+
+          The bundle is not signed, Windows shows a warning for an unknown publisher. Confirm the
+          publisher in the dialog of the firewall, or add the file to the exclusions of the antivirus.
+
+          ### macOS
+
+          The application is not signed with an Apple certificate, so it cannot be notarised and it
+          cannot be distributed through the App Store. Open it with a right click and confirm the
+          opening, or sign it with your own Apple Account.
           EOF
           if [ "$IOS_STATUS" = "ipa" ]; then
             cat >> release-notes.md <<EOF
 
-          An unsigned IPA archive is attached to this release as an optional asset. It is not signed and
-          it cannot be installed on a device as it is, see the iOS build instructions for the signing steps.
+          ### iOS
+
+          An unsigned IPA is attached to this release as an optional asset. It carries no signature and
+          it cannot be installed on a device as it is, it has to be signed with an Apple Account first.
+          The build log of the iOS job is attached as well.
           EOF
           elif [ "$IOS_STATUS" = "archive" ]; then
             cat >> release-notes.md <<EOF
+
+          ### iOS
 
           The iOS build produced an unsigned Xcode archive, it is attached to this release as
           \`Snigea-${APP_VERSION}-${BUILD_NUMBER}-unsigned-xcarchive.zip\`. It is **not** an IPA and it cannot
@@ -416,10 +637,26 @@ jobs:
           else
             cat >> release-notes.md <<EOF
 
+          ### iOS
+
           The iOS build did not complete on the release runner. The build log is attached to this release
           and the source stays available for a local build with your own Apple Account.
           EOF
           fi
+          for platform in LINUX WINDOWS MACOS; do
+            case "$platform" in
+              LINUX) name="Linux" ;;
+              WINDOWS) name="Windows" ;;
+              MACOS) name="macOS" ;;
+            esac
+            if [ "$(eval echo \$$platform)" != "success" ]; then
+              cat >> release-notes.md <<EOF
+
+          The ${name} build did not succeed on the release runner, there is no ${name} asset in this
+          release. The Android and the web version are not affected by it.
+          EOF
+            fi
+          done
           cat >> release-notes.md <<EOF
 
           ### Build the iOS app on your own Mac
@@ -454,7 +691,7 @@ jobs:
           ASSETS=()
           while IFS= read -r asset; do
             ASSETS+=("$asset")
-          done < <(cd artifacts && find . -maxdepth 1 -type f \( -name '*.apk' -o -name '*.aab' -o -name '*.ipa' -o -name '*.zip' -o -name '*.txt' \) -printf '%f\n' | sort)
+          done < <(cd artifacts && find . -maxdepth 1 -type f \( -name '*.apk' -o -name '*.aab' -o -name '*.ipa' -o -name '*.zip' -o -name '*.tar.gz' -o -name '*.deb' -o -name '*.txt' \) -printf '%f\n' | sort)
 
           gh release create "$TAG" \
             --title "Snigea ${APP_VERSION} (${BUILD_NUMBER})" \
@@ -462,4 +699,4 @@ jobs:
             "${ASSETS[@]/#/artifacts/}"
 
           echo "The release $TAG has been published."
-          gh release view "$TAG" --json url,tagName,name --jq '"Release: \(.tagName) \(.name) -> \(.url)"'
+          gh release view "$TAG" --json url,tagName,name,assets --jq '"Release: \(.tagName) \(.name)\n\(.url)\n" + (.assets | map("  - " + .name) | join("\n"))'

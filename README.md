@@ -128,11 +128,26 @@ The catalogue, the search, the details and the library work in the browser. The 
 uses the SQLite WebAssembly build, so the whole history and the watchlist are available there
 too. Downloads and background work are not available in a browser.
 
+### Windows, macOS and Linux
+
+Every release publishes the desktop builds as well:
+
+| Asset | Platform | Install |
+| :--- | :--- | :--- |
+| `Snigea-<version>-<build>-windows-x64.zip` | Windows | Unpack it and run `snigea.exe`. The bundle is not signed, so Windows shows the warning of an unknown publisher. |
+| `Snigea-<version>-<build>-macos-universal.zip` | macOS | Unpack it and open `snigea.app` with a right click, the application is not signed. |
+| `Snigea-<version>-<build>-linux-x64.tar.gz` | Linux | Unpack it and run the `snigea` file in it. |
+| `Snigea-<version>-<build>-linux-amd64.deb` | Debian, Ubuntu | `sudo apt install ./Snigea-<version>-<build>-linux-amd64.deb` |
+
+The desktop builds need the mpv client library, `libmpv2` on the distributions that split it
+into its own package.
+
 ### iOS
 
 There is **no signed IPA**, because the project has no Apple Developer membership, no Apple
-signing certificate and no provisioning profile. A Mac user builds and signs the app with their
-own Apple Account:
+signing certificate and no provisioning profile. The release attaches an **unsigned** IPA for
+the people who sign it themselves, it cannot be installed on a device as it is. A Mac user
+builds and signs the app with their own Apple Account:
 
 1. Install the Flutter SDK `3.47.7`, run `flutter pub get` in the repository.
 2. Run `open ios/Runner.xcworkspace`, Xcode opens the project.
@@ -335,7 +350,7 @@ an immutable commit SHA.
 | Workflow | Trigger | What it does |
 | :--- | :--- | :--- |
 | [`.github/workflows/ci.yml`](https://github.com/MurShidM01/snigea/blob/main/.github/workflows/ci.yml) | Push and pull request on `main`, manual | `flutter pub get`, the formatting check, `flutter analyze`, `flutter test`, a production web build and a release Android build. It never needs a signing secret, so a pull request from a fork runs it without any permission. |
-| [`.github/workflows/release.yml`](https://github.com/MurShidM01/snigea/blob/main/.github/workflows/release.yml) | A version tag `v*`, manual | Validates the tag against `pubspec.yaml`, builds the signed Android APK and App Bundle on Ubuntu, builds the unsigned iOS archive on macOS, verifies the APK signature and publishes the GitHub Release with the checksums and the release notes. |
+| [`.github/workflows/release.yml`](https://github.com/MurShidM01/snigea/blob/main/.github/workflows/release.yml) | A version tag `v*`, manual | Validates the tag against `pubspec.yaml`, builds the signed Android APK and App Bundle on Ubuntu, the Linux bundle and the Debian package, the Windows bundle on Windows, the macOS application bundle and the unsigned iOS archive on macOS, verifies the APK signature and publishes the GitHub Release with the checksums and the release notes. |
 | [`.github/workflows/pages.yml`](https://github.com/MurShidM01/snigea/blob/main/.github/workflows/pages.yml) | Push on `main`, manual | Builds the production web bundle with the correct base path and deploys it to GitHub Pages with the official Pages actions. A pull request only validates the bundle, it never deploys. |
 
 ### Repository secrets
