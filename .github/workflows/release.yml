@@ -531,29 +531,32 @@ jobs:
       - name: Name the release assets
         run: |
           set -euo pipefail
-          cd artifacts/android
-          [ -f app-release.apk ] || { echo "::error::The release APK is missing."; exit 1; }
-          [ -f app-release.aab ] || { echo "::error::The release App Bundle is missing."; exit 1; }
-          mv app-release.apk "Snigea-${APP_VERSION}-${BUILD_NUMBER}-android-universal.apk"
-          mv app-release.aab "Snigea-${APP_VERSION}-${BUILD_NUMBER}-android.aab"
-          if [ -f signature-report.txt ]; then
-            mv signature-report.txt "Snigea-${APP_VERSION}-android-signature-report.txt"
+          cd artifacts
+
+          # The upload of the artefact keeps the folder structure of the
+          # workspace, the files are found and moved to the root.
+          APK="$(find android -type f -name 'app-release.apk' | head -n 1 || true)"
+          AAB="$(find android -type f -name 'app-release.aab' | head -n 1 || true)"
+          REPORT="$(find android -type f -name 'signature-report.txt' | head -n 1 || true)"
+          [ -n "$APK" ] || { echo "::error::The release APK is missing."; exit 1; }
+          [ -n "$AAB" ] || { echo "::error::The release App Bundle is missing."; exit 1; }
+          mv "$APK" "Snigea-${APP_VERSION}-${BUILD_NUMBER}-android-universal.apk"
+          mv "$AAB" "Snigea-${APP_VERSION}-${BUILD_NUMBER}-android.aab"
+          if [ -n "$REPORT" ]; then
+            mv "$REPORT" "Snigea-${APP_VERSION}-android-signature-report.txt"
           fi
 
           for platform in linux windows macos ios; do
-            if [ -d "../$platform" ]; then
-              for file in ../$platform/*; do
-                [ -e "$file" ] || continue
-                mv "$file" "../$(basename "$file")"
-              done
-            fi
+            [ -d "$platform" ] || continue
+            find "$platform" -type f -exec mv -f -t . {} +
           done
+          rm -rf android linux windows macos ios
 
       - name: Create the checksums
         run: |
           set -euo pipefail
           cd artifacts
-          FILES="$(find . -maxdepth 1 -type f \( -name '*.apk' -o -name '*.aab' -o -name '*.ipa' -o -name '*.zip' -o -name '*.tar.gz' -o -name '*.deb' \) -printf '%f\n' | sort)"
+          FILES="$(find . -maxdepth 1 -type f \( -name '*.apk' -o -name '*.aab' -o -name '*.ipa' -o -name '*.zip' -o -name '*.tar.gz' -o -name '*.deb' -o -name '*.txt' \) ! -name 'SHA256SUMS.txt' -printf '%f\n' | sort)"
           if [ -z "$FILES" ]; then
             echo "::error::There is no asset to publish."
             exit 1
@@ -645,11 +648,11 @@ jobs:
           fi
           for platform in LINUX WINDOWS MACOS; do
             case "$platform" in
-              LINUX) name="Linux" ;;
-              WINDOWS) name="Windows" ;;
-              MACOS) name="macOS" ;;
+              LINUX) name="Linux"; result="$LINUX_RESULT" ;;
+              WINDOWS) name="Windows"; result="$WINDOWS_RESULT" ;;
+              MACOS) name="macOS"; result="$MACOS_RESULT" ;;
             esac
-            if [ "$(eval echo \$$platform)" != "success" ]; then
+            if [ "$result" != "success" ]; then
               cat >> release-notes.md <<EOF
 
           The ${name} build did not succeed on the release runner, there is no ${name} asset in this
