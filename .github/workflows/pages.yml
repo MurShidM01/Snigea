@@ -29,6 +29,11 @@ jobs:
     name: Build the production web bundle
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    permissions:
+      contents: read
+      # The configure step below can enable the Pages site of a repository
+      # that does not have one yet.
+      pages: write
     outputs:
       base_href: ${{ steps.base.outputs.base_href }}
     steps:
@@ -98,7 +103,14 @@ jobs:
 
       - name: Configure GitHub Pages
         id: pages
+        # A pull request only validates the bundle, it must never change the
+        # settings of the Pages site.
+        if: github.event_name != 'pull_request'
         uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b # v5
+        with:
+          # The site is created with the Actions source when the repository
+          # does not have one yet.
+          enablement: true
 
       - name: Upload the Pages artifact
         uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa # v3

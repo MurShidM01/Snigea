@@ -12,7 +12,7 @@ history, downloads and playback progress in a local SQLite database.</p>
 <p>
 <a href="https://github.com/MurShidM01/snigea/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/MurShidM01/snigea?display_name=tag&sort=semver&label=release"></a>
 <a href="https://github.com/MurShidM01/snigea/releases"><img alt="Downloads" src="https://img.shields.io/github/downloads/MurShidM01/snigea/total?label=downloads&logo=github"></a>
-<a href="https://murshidm01.github.io/snigea/"><img alt="Web demo" src="https://img.shields.io/badge/web%20demo-GitHub%20Pages-654FF0?logo=githubpages"></a>
+<a href="https://murshidm01.github.io/Snigea/"><img alt="Web demo" src="https://img.shields.io/badge/web%20demo-GitHub%20Pages-654FF0?logo=githubpages"></a>
 <a href="https://github.com/MurShidM01/snigea/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/MurShidM01/snigea/actions/workflows/ci.yml/badge.svg?branch=main"></a>
 <a href="https://github.com/MurShidM01/snigea/actions/workflows/release.yml"><img alt="Release workflow" src="https://github.com/MurShidM01/snigea/actions/workflows/release.yml/badge.svg"></a>
 <a href="https://github.com/MurShidM01/snigea/actions/workflows/pages.yml"><img alt="Pages workflow" src="https://github.com/MurShidM01/snigea/actions/workflows/pages.yml/badge.svg?branch=main"></a>
@@ -20,7 +20,7 @@ history, downloads and playback progress in a local SQLite database.</p>
 
 <p>
 <a href="https://github.com/MurShidM01/snigea/releases/latest"><img alt="Download for Android" src="https://img.shields.io/badge/Download-Android%20APK-3DDC84?logo=android&logoColor=white" height="42"></a>
-<a href="https://murshidm01.github.io/snigea/"><img alt="Open the web version" src="https://img.shields.io/badge/Open%20the%20web%20version-654FF0?logo=flutter&logoColor=white" height="42"></a>
+<a href="https://murshidm01.github.io/Snigea/"><img alt="Open the web version" src="https://img.shields.io/badge/Open%20the%20web%20version-654FF0?logo=flutter&logoColor=white" height="42"></a>
 </p>
 
 <p>
@@ -121,7 +121,7 @@ history, downloads and playback progress in a local SQLite database.</p>
 The web build is deployed automatically to GitHub Pages on every push to `main`:
 
 ```
-https://murshidm01.github.io/snigea/
+https://murshidm01.github.io/Snigea/
 ```
 
 The catalogue, the search, the details and the library work in the browser. The local database
