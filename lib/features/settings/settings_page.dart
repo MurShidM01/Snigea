@@ -9,6 +9,7 @@ import '../../providers/addons/addon_client.dart';
 import '../../providers/addons/addon_models.dart';
 import '../../state/app_providers.dart';
 import '../../widgets/common.dart';
+import 'credits_dialog.dart';
 
 /// The settings screen.
 class SettingsPage extends ConsumerWidget {
@@ -198,6 +199,14 @@ class SettingsPage extends ConsumerWidget {
                     'Dramachi, CircleFTP, DhakaFlix and Stremio addon '
                     'providers. Everything is stored locally on this device.',
                   ),
+                ),
+                ListTile(
+                  leading: const Icon(Icons.favorite_outline),
+                  title: const Text('Credits'),
+                  subtitle: const Text(
+                    'The projects and the packages that Snigea builds on',
+                  ),
+                  onTap: () => CreditsDialog.show(context),
                 ),
               ],
             ),
