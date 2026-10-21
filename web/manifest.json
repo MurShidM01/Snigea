@@ -1,11 +1,15 @@
 {
     "name": "Snigea",
     "short_name": "Snigea",
+    "description": "Snigea is an open source Flutter movie and TV streaming client for MovieBox, 4KHDHub, Dramachi, BDIX and Stremio addons.",
+    "lang": "en",
+    "dir": "ltr",
     "start_url": ".",
+    "scope": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#09090B",
+    "theme_color": "#09090B",
+    "categories": ["entertainment", "video", "multimedia"],
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [
