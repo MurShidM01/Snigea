@@ -75,16 +75,20 @@ history, downloads and playback progress in a local SQLite database.</p>
 
 | Home | Details |
 | :---: | :---: |
-| ![The home screen of Snigea](Screenshots/home.png) | ![The details page of Snigea](Screenshots/details.png) |
-| The catalogue of every provider in themed rows. | The synopsis, the metadata, the seasons and the episodes. |
+| ![The home screen of Snigea](Screenshots/home.jpg) | ![The details page of Snigea](Screenshots/details.jpg) |
+| The catalogue of every provider in themed rows. | The synopsis, the metadata, the sources and the episodes. |
 
-| Search | Downloads | Settings |
-| :---: | :---: | :---: |
-| ![The search screen of Snigea](Screenshots/search.png) | ![The download list of Snigea](Screenshots/downloads.png) | ![The settings screen of Snigea](Screenshots/settings.png) |
-| The search across the providers with the filter. | The live progress of every download. | The theme, the providers and the download directory. |
+| Inline player | Fullscreen player |
+| :---: | :---: |
+| ![The inline player of Snigea](Screenshots/player-inline.jpg) | ![The fullscreen player of Snigea](Screenshots/player-controls.jpg) |
+| The video with the actions, the sources and the recommendations. | The immersive player with the seek bar, the skip buttons and the lock. |
 
-> The screenshots are rendered by the test suite of the project, they always show the current
-> interface.
+| Search | Library | Downloads | Settings |
+| :---: | :---: | :---: | :---: |
+| ![The search screen of Snigea](Screenshots/search.jpg) | ![The library of Snigea](Screenshots/library.jpg) | ![The download list of Snigea](Screenshots/downloads.jpg) | ![The settings screen of Snigea](Screenshots/settings.jpg) |
+| The search across the providers with the filter. | The history, the watchlist and the favourites. | The live progress of every download. | The playback, the theme and the providers. |
+
+> These are real screenshots of the application on a device.
 
 ---
 

@@ -233,7 +233,9 @@ void main() {
       'settings': const SettingsPage(),
     };
 
-    final directory = Directory('../../Screenshots');
+    // The rendered pictures are stored next to the other golden images, they
+    // never overwrite the device screenshots of the README.
+    final directory = Directory('goldens/screenshots');
     if (!directory.existsSync()) {
       directory.createSync(recursive: true);
     }
@@ -277,7 +279,7 @@ void main() {
 
       await expectLater(
         find.byKey(ValueKey('capture-${entry.key}')),
-        matchesGoldenFile('../../Screenshots/${entry.key}.png'),
+        matchesGoldenFile('goldens/screenshots/${entry.key}.png'),
       );
       expect(tester.takeException(), isNull);
     }
