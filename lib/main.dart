@@ -1,18 +1,25 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:media_kit/media_kit.dart';
 
-/// The entry point of the Snigea application.
-void main() {
-  runApp(const SnigeaBootstrap());
-}
+import 'app.dart';
 
-/// The shell of the application while the feature modules are added.
-class SnigeaBootstrap extends StatelessWidget {
-  const SnigeaBootstrap({super.key});
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
 
-  @override
-  Widget build(BuildContext context) {
-    return const MaterialApp(
-      home: Scaffold(body: Center(child: Text('Snigea'))),
-    );
-  }
+  // The player engine is initialised once for the whole application.
+  MediaKit.ensureInitialized();
+
+  // The application draws behind the system bars, so the navigation bar and
+  // the app bar reach the edges of the screen.
+  await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+
+  await SystemChrome.setPreferredOrientations([
+    DeviceOrientation.portraitUp,
+    DeviceOrientation.landscapeLeft,
+    DeviceOrientation.landscapeRight,
+  ]);
+
+  runApp(const ProviderScope(child: SnigeaApp()));
 }
