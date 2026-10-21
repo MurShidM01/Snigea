@@ -27,6 +27,7 @@ history, downloads and playback progress in a local SQLite database.</p>
 <a href="https://img.shields.io/badge/Flutter-3.47.7-02569B?logo=flutter&logoColor=white"><img alt="Flutter 3.47.7" src="https://img.shields.io/badge/Flutter-3.47.7-02569B?logo=flutter&logoColor=white"></a>
 <a href="https://img.shields.io/badge/Dart-3.13.5-0175C2?logo=dart&logoColor=white"><img alt="Dart 3.13.5" src="https://img.shields.io/badge/Dart-3.13.5-0175C2?logo=dart&logoColor=white"></a>
 <a href="https://img.shields.io/badge/License-MIT-green.svg"><img alt="MIT licence" src="https://img.shields.io/badge/License-MIT-green.svg"></a>
+<a href="https://img.shields.io/badge/License-Apache_2.0-blue.svg"><img alt="Apache 2.0 licence" src="https://img.shields.io/badge/License-Apache_2.0-blue.svg"></a>
 <a href="https://img.shields.io/badge/platform-Android%20%7C%20iOS%20%7C%20macOS%20%7C%20Windows%20%7C%20Linux%20%7C%20Web-lightgrey?logo=flutter"><img alt="Platforms" src="https://img.shields.io/badge/platform-Android%20%7C%20iOS%20%7C%20macOS%20%7C%20Windows%20%7C%20Linux%20%7C%20Web-lightgrey?logo=flutter"></a>
 </p>
 
@@ -52,6 +53,7 @@ history, downloads and playback progress in a local SQLite database.</p>
 - [Development](#development)
 - [Verification](#verification)
 - [FAQ](#faq)
+- [Credits and acknowledgements](#credits-and-acknowledgements)
 - [License and disclaimer](#license-and-disclaimer)
 
 ---
@@ -558,10 +560,38 @@ and your own Play signing key, and change the `applicationId` if the id is not y
 
 ---
 
+## Credits and acknowledgements
+
+Snigea is a Flutter port of the provider logic of
+**[MovieBox-Tui](https://github.com/mesamirh/MovieBox-Tui)**
+by [mesamirh](https://github.com/mesamirh), the terminal interface to find,
+download and stream movies, TV shows and live TV. The request signing, the
+parsing rules, the mirror ranking and the upstream fixes of the pull requests
+[#208](https://github.com/mesamirh/MovieBox-Tui/pull/208) and
+[#216](https://github.com/mesamirh/MovieBox-Tui/pull/216) were ported from it.
+Without that project there would be no Snigea.
+
+The application builds on Riverpod, go_router, Dio, Drift, media_kit, the
+SQLite WebAssembly build of sqlite3.dart and the packages of the Dart team.
+The complete list with the licence of every package, of every provider and of
+every asset is in **[CREDITS.md](CREDITS.md)**.
+
 ## License and disclaimer
+
+Snigea is **dual licensed**: you may use it under the terms of the
+**Apache License 2.0** *or* the **MIT licence**, at your option.
+
+| | |
+| :--- | :--- |
+| Apache License 2.0 | the full text in [LICENSE-APACHE](LICENSE-APACHE) |
+| MIT licence | the full text in [LICENSE-MIT](LICENSE-MIT) |
+| the notice of the project | [LICENSE](LICENSE) |
+
+The third party components keep their own licences, they are listed in
+[CREDITS.md](CREDITS.md).
 
 Snigea does not host or store any media. It plays streams that the upstream providers publish.
 Please respect the copyright of the content you access and the terms of the providers you use.
 
-The source code is published under the MIT licence. The provider names and logos belong to their
-respective owners, this project is not affiliated with them.
+The provider names and logos belong to their respective owners, this project is not
+affiliated with them.

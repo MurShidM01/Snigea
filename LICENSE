@@ -1,0 +1,15 @@
+Snigea is dual licensed under the Apache License, Version 2.0 and the MIT
+licence. You may use the project under the terms of either of these licences,
+at your option.
+
+  Apache License, Version 2.0 — the full text is in LICENSE-APACHE
+  MIT licence                    — the full text is in LICENSE-MIT
+
+Unless you explicitly state otherwise, any contribution intentionally
+submitted for inclusion in this project by you, as defined in the Apache
+License 2.0, shall be dual licensed as above, without any additional terms or
+conditions.
+
+The third party components that Snigea builds on keep their own licences.
+They are listed with their licence in CREDITS.md, and the notices of the
+Apache licence have to be kept when the project is distributed.
